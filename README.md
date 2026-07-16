@@ -19,11 +19,10 @@ bun run desktop:build
 
 ## Release
 
-Push a version tag:
+Use the release script:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+./release.sh 0.1.0
 ```
 
-GitHub Actions will build installers for macOS and Windows and create a draft release.
+This bumps the version, commits, tags, and pushes. GitHub Actions will build installers for macOS and Windows and create a draft release.
