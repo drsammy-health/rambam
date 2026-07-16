@@ -4,6 +4,18 @@ export type Metric = {
   key: string
   label: string
   unit: string
+  continuous?: boolean
+}
+
+export type ChartSeries = {
+  id: string
+  userId: string
+  metricKey: string
+  label: string
+  unit: string
+  color: string
+  continuous: boolean
+  dataPoints: ApiDataPoint[]
 }
 
 export type LoadingProgress = {
@@ -15,12 +27,12 @@ export type LoadingProgress = {
 export type AppState = {
   apiUrl: string
   users: ApiUser[]
-  selectedUserId: string | null
+  activeUserIds: string[]
   metrics: Metric[]
-  selectedMetric: string | null
+  activeMetricKeys: string[]
+  chartSeries: ChartSeries[]
   dateFrom: string | null
   dateTo: string | null
-  dataPoints: ApiDataPoint[]
   loading: boolean
   loadingProgress: LoadingProgress | null
   error: string | null

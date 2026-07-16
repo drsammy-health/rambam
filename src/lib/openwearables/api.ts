@@ -50,44 +50,6 @@ function formatDate(d: Date): string {
   return d.toISOString().split('T')[0]
 }
 
-export async function fetchTimeseries(
-  userId: string,
-  metric: string,
-  startDate?: string,
-  endDate?: string,
-  resolution: 'raw' | '1min' | '5min' | '15min' | '1hour' = 'raw',
-): Promise<ApiResponse<ApiDataPoint[]>> {
-  const params = new URLSearchParams()
-  params.set('types', metric)
-  params.set('resolution', resolution)
-  params.set('limit', String(PAGE_LIMIT))
-
-  const now = new Date()
-  const defaultStart = new Date(
-    now.getTime() - DEFAULT_DAYS * 24 * 60 * 60 * 1000,
-  )
-
-  params.set('start_time', startDate || formatDate(defaultStart))
-  params.set('end_time', endDate || formatDate(now))
-
-  const result = await apiFetch<PaginatedApiData>(
-    `/users/${userId}/timeseries?${params.toString()}`,
-  )
-  if (!result.ok) return result
-
-  const data = result.data.data
-    .filter(
-      (d): d is typeof d & { value: number } =>
-        d.value !== undefined && d.value !== null,
-    )
-    .map((d) => ({
-      timestamp: d.timestamp,
-      value: d.value,
-    }))
-
-  return { ok: true, data }
-}
-
 /**
  * Fetch all pages of timeseries data, following next_cursor links.
  * Uses resolution=1hour by default to avoid excessive point counts for charting.

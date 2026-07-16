@@ -97,15 +97,9 @@ button:disabled {
   padding: 1rem;
 }
 
-.active-nav {
-  background-color: var(--color-sage-light);
-  color: var(--color-sage-dark);
-  border-color: var(--color-sage);
-}
-
 .chart-container {
   position: relative;
-  height: 400px;
+  height: 100%;
   width: 100%;
 }
 
@@ -129,6 +123,45 @@ button:disabled {
 	font-weight: 500;
 	color: var(--color-warm-gray);
 	text-transform: uppercase;
+}
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background-color: var(--color-white);
+  border-right: 1px solid var(--color-border);
+}
+
+.metric-chip {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background-color: var(--color-cream);
+  color: var(--color-charcoal);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.metric-chip:hover {
+  background-color: var(--color-cream-dark);
+}
+
+.metric-chip-active {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background-color: var(--color-sage-light);
+  color: var(--color-sage-dark);
+  border: 1px solid var(--color-sage);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.metric-chip-active:hover {
+  background-color: rgba(107, 142, 125, 0.2);
 }
 
 @keyframes spin {

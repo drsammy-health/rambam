@@ -109,7 +109,7 @@ export default function Settings() {
         : 'text-warm-gray'
 
   return (
-    <div className="max-w-150 mx-auto flex flex-col gap-4">
+    <div className="max-w-150 mx-auto flex flex-col gap-4 pt-8">
       <div className="card">
         <h2 className="text-base font-semibold mb-4">API Configuration</h2>
         <div className="flex flex-col gap-4">
