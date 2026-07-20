@@ -9,6 +9,10 @@ export type ApiUser = {
 export type ApiDataPoint = {
   timestamp: string
   value: number
+  source?: {
+    provider: string
+    device: string | null
+  }
 }
 
 export type ApiResponse<T> =
@@ -142,6 +146,175 @@ export type PaginatedApiData = {
   data: TimeSeriesSample[]
   pagination: Pagination
   metadata: TimeseriesMetadata
+}
+
+export type ApiWorkout = {
+  id: string
+  type: string
+  name: string | null
+  start_time: string
+  end_time: string
+  zone_offset: string | null
+  duration_seconds: number | null
+  source: SourceMetadata
+  calories_kcal: number | null
+  distance_meters: number | null
+  avg_heart_rate_bpm: number | null
+  max_heart_rate_bpm: number | null
+  avg_pace_sec_per_km: number | null
+  elevation_gain_meters: number | null
+}
+
+export type ApiSleep = {
+  id: string
+  start_time: string
+  end_time: string
+  zone_offset: string | null
+  source: SourceMetadata
+  duration_seconds: number
+  sleep_duration_seconds: number | null
+  efficiency_percent: number | null
+  is_nap: boolean
+}
+
+// ── Summary Types ──────────────────────────────────────────────────────────
+
+export type IntensityMinutes = {
+  light: number | null
+  moderate: number | null
+  vigorous: number | null
+}
+
+export type HeartRateStats = {
+  avg_bpm: number | null
+  max_bpm: number | null
+  min_bpm: number | null
+}
+
+export type ActivitySummary = {
+  date: string
+  source: SourceMetadata
+  steps: number | null
+  distance_meters: number | null
+  floors_climbed: number | null
+  elevation_meters: number | null
+  active_calories_kcal: number | null
+  total_calories_kcal: number | null
+  active_minutes: number | null
+  sedentary_minutes: number | null
+  intensity_minutes: IntensityMinutes | null
+  heart_rate: HeartRateStats | null
+}
+
+export type SleepStagesSummary = {
+  awake_minutes: number | null
+  light_minutes: number | null
+  deep_minutes: number | null
+  rem_minutes: number | null
+}
+
+export type SleepSessionSummary = {
+  start_time: string
+  end_time: string
+  zone_offset: string | null
+  duration_minutes: number | null
+  is_nap: boolean
+}
+
+export type SleepSummary = {
+  date: string
+  source: SourceMetadata
+  start_time: string | null
+  end_time: string | null
+  zone_offset: string | null
+  duration_minutes: number | null
+  total_duration_minutes: number | null
+  time_in_bed_minutes: number | null
+  efficiency_percent: number | null
+  stages: SleepStagesSummary | null
+  interruptions_count: number | null
+  nap_count: number | null
+  nap_duration_minutes: number | null
+  sessions: SleepSessionSummary[] | null
+  avg_heart_rate_bpm: number | null
+  avg_hrv_sdnn_ms: number | null
+  avg_hrv_rmssd_ms: number | null
+  avg_respiratory_rate: number | null
+  avg_spo2_percent: number | null
+}
+
+export type RecoverySummary = {
+  date: string
+  source: SourceMetadata
+  sleep_duration_seconds: number | null
+  sleep_efficiency_percent: number | null
+  resting_heart_rate_bpm: number | null
+  avg_hrv_sdnn_ms: number | null
+  avg_spo2_percent: number | null
+  recovery_score: number | null
+}
+
+export type BodySlowChanging = {
+  weight_kg: number | null
+  height_cm: number | null
+  body_fat_percent: number | null
+  muscle_mass_kg: number | null
+  bmi: number | null
+  age: number | null
+}
+
+export type BodyAveraged = {
+  period_days: number
+  period_start: string
+  period_end: string
+  resting_heart_rate_bpm: number | null
+  avg_hrv_sdnn_ms: number | null
+  avg_hrv_rmssd_ms: number | null
+}
+
+export type BloodPressure = {
+  avg_systolic_mmhg: number | null
+  avg_diastolic_mmhg: number | null
+  max_systolic_mmhg: number | null
+  max_diastolic_mmhg: number | null
+  min_systolic_mmhg: number | null
+  min_diastolic_mmhg: number | null
+  reading_count: number | null
+}
+
+export type BodyLatest = {
+  body_temperature_celsius: number | null
+  body_temperature_measured_at: string | null
+  skin_temperature_celsius: number | null
+  skin_temperature_measured_at: string | null
+  blood_pressure: BloodPressure | null
+  blood_pressure_measured_at: string | null
+}
+
+export type BodySummary = {
+  source: SourceMetadata
+  slow_changing: BodySlowChanging
+  averaged: BodyAveraged
+  latest: BodyLatest
+}
+
+export type ProviderDataCount = {
+  provider: string
+  data_points: number
+  series_counts: Record<string, number>
+  workout_count: number
+  sleep_count: number
+}
+
+export type UserDataSummaryResponse = {
+  user_id: string
+  total_data_points: number
+  total_workouts: number
+  total_sleep_events: number
+  series_type_counts: Record<string, number>
+  workout_type_counts: Record<string, number>
+  by_provider: ProviderDataCount[]
+  has_womens_health_data: boolean
 }
 
 export type ProgressCallback = (

@@ -12,23 +12,38 @@ export function createState(): AppState {
   return {
     apiUrl: DEFAULT_API_URL,
     users: [],
-    activeUserIds: [],
+    activeUserId: null,
     metrics: [
       { key: 'heart_rate', label: 'Heart Rate', unit: 'bpm', continuous: true },
       { key: 'resting_heart_rate', label: 'Resting Heart Rate', unit: 'bpm' },
-      { key: 'blood_glucose', label: 'Blood Glucose', unit: 'mg/dL' },
+      { key: 'blood_glucose', label: 'Blood Glucose', unit: 'mg/dL', continuous: true },
       { key: 'respiratory_rate', label: 'Respiratory Rate', unit: 'rpm' },
       { key: 'heart_rate_variability_sdnn', label: 'HRV (SDNN)', unit: 'ms' },
     ],
     activeMetricKeys: [],
     chartSeries: [],
+    events: [
+      { key: 'workouts', label: 'Workouts' },
+      { key: 'sleep', label: 'Sleep' },
+    ],
+    activeEventKeys: [],
+    eventSeries: [],
+    summaries: {
+      activity: [],
+      sleep: [],
+      body: null,
+      data: null,
+    },
+    fetchSummaries: true,
     dateFrom: null,
     dateTo: null,
+    resolution: '1hour',
     loading: false,
     loadingProgress: null,
     error: null,
     view: 'dashboard',
     hasApiKey: false,
+    debugOutputDir: null,
   }
 }
 

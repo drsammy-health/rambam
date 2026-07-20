@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
-import { fetchUsers } from '../lib/openwearables/api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { fetchUsers, getDefaultDebugDir, pickFolder } from '../lib/openwearables/api'
 import { DEFAULT_API_URL } from '../lib/openwearables/config'
 import { resetSettings, saveSettings } from '../lib/tauri'
 import { useAppState } from '../store'
@@ -11,7 +11,12 @@ export default function Settings() {
   const [url, setUrl] = useState(state.apiUrl)
   const [key, setKey] = useState('')
   const [status, setStatus] = useState<StatusMessage | null>(null)
+  const [defaultDebugDir, setDefaultDebugDir] = useState<string | null>(null)
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    getDefaultDebugDir().then(setDefaultDebugDir).catch(() => {})
+  }, [])
 
   const showStatus = useCallback(
     (message: string, type: 'success' | 'error' | 'neutral') => {
@@ -101,6 +106,13 @@ export default function Settings() {
     if (e.key === 'Enter') handleSave()
   }
 
+  const handleBrowseDebugDir = async () => {
+    const selected = await pickFolder()
+    if (selected) {
+      setPartial({ debugOutputDir: selected })
+    }
+  }
+
   const statusColor =
     status?.type === 'success'
       ? 'text-success-text'
@@ -175,6 +187,42 @@ export default function Settings() {
           {status && (
             <p className={`text-sm min-h-5 ${statusColor}`}>{status.message}</p>
           )}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="text-base font-semibold mb-4">Debug Output</h2>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium">Output directory</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              className="text-sm flex-1"
+              value={state.debugOutputDir || ''}
+              onChange={(e) =>
+                setPartial({
+                  debugOutputDir: e.target.value.trim() || null,
+                })
+              }
+              placeholder="Leave blank for default"
+            />
+            <button
+              type="button"
+              className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+              onClick={handleBrowseDebugDir}
+            >
+              Browse…
+            </button>
+          </div>
+          <p className="text-xs text-warm-gray">
+            Files saved as <code>&lt;root&gt;/&lt;user&gt;/&lt;unixts&gt;/file.json</code>.
+            {defaultDebugDir && (
+              <>
+                {' '}
+                Default: <code className="text-foreground/70">{defaultDebugDir}</code>
+              </>
+            )}
+          </p>
         </div>
       </div>
     </div>

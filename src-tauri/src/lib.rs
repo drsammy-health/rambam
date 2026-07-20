@@ -1,5 +1,6 @@
 use std::time::Duration;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_store::StoreExt;
 
 const KEYRING_SERVICE: &str = "com.rambam.app";
@@ -70,6 +71,54 @@ async fn reset_settings(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn save_debug_json(app: AppHandle, filename: String, data: String, output_dir: Option<String>) -> Result<String, String> {
+    let debug_dir = if let Some(custom) = output_dir {
+        std::path::PathBuf::from(custom)
+    } else {
+        // Default: Downloads/rambam_debug_data (cross-platform via Tauri)
+        let base = app.path().download_dir()
+            .or_else(|_| app.path().document_dir())
+            .or_else(|_| app.path().app_data_dir())
+            .map_err(|e| e.to_string())?;
+        base.join("rambam_debug_data")
+    };
+
+    std::fs::create_dir_all(&debug_dir).map_err(|e| e.to_string())?;
+    let path = debug_dir.join(&filename);
+    // Create any parent subdirectories if filename contains a path
+    if let Some(parent) = path.parent() {
+        if parent != debug_dir {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    std::fs::write(&path, &data).map_err(|e| e.to_string())?;
+    println!("[rambam] Saved debug JSON: {} ({} bytes)", path.display(), data.len());
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn pick_folder(app: AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let tx = std::sync::Mutex::new(tx);
+
+    app.dialog().file().pick_folder(move |path| {
+        let _ = tx.lock().unwrap().send(path.map(|p| p.to_string()));
+    });
+
+    let result = rx.recv().map_err(|e| e.to_string())?;
+    Ok(result)
+}
+
+#[tauri::command]
+fn get_default_debug_dir(app: AppHandle) -> Result<String, String> {
+    let base = app.path().document_dir()
+        .or_else(|_| app.path().app_data_dir())
+        .map_err(|e| e.to_string())?;
+    let dir = base.join("rambam_debug_data");
+    Ok(dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 async fn fetch_url(app: AppHandle, path: String) -> Result<String, String> {
     let store = get_store(&app)?;
     let base_url = load_url(&store);
@@ -108,7 +157,8 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![fetch_url, save_settings, load_settings, reset_settings])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![fetch_url, save_settings, load_settings, reset_settings, save_debug_json, get_default_debug_dir, pick_folder])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

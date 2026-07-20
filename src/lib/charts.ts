@@ -160,8 +160,12 @@ export function renderChart(
             label: (context) => {
               const s = seriesList[context.datasetIndex]
               const val = context.parsed.y
+              const dp = s.dataPoints[context.dataIndex]
+              const provider = dp?.source?.provider
               if (val == null) return `${s.label}: —`
-              return `${s.label}: ${val} ${s.unit}`
+              return provider
+                ? `${s.label}: ${val} ${s.unit} (${provider})`
+                : `${s.label}: ${val} ${s.unit}`
             },
           },
         },
