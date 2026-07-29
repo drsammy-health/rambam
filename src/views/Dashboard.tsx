@@ -13,16 +13,16 @@ export default function Dashboard() {
       destroyChart()
       return
     }
-    renderChart(canvasRef.current, state.chartSeries)
+    renderChart(canvasRef.current, state.chartSeries, state.resolution)
     return () => {
       destroyChart()
     }
-  }, [state.chartSeries])
+  }, [state.chartSeries, state.resolution])
 
   return (
     <div className="flex flex-col flex-1 min-w-0 h-full p-4 gap-4 overflow-hidden">
         {state.error && (
-          <div className="error-banner flex-shrink-0 flex items-center justify-between gap-2">
+          <div className="error-banner shrink-0 flex items-center justify-between gap-2">
             <span>{state.error}</span>
             <button
               type="button"
@@ -61,15 +61,19 @@ export default function Dashboard() {
               </p>
             </div>
           ) : (
-            <div className="chart-container">
+              <div className="chart-container">
               <canvas ref={canvasRef} />
+              {/* Data point count overlay */}
+              <div className="absolute top-2 right-2 text-[10px] text-warm-gray-light bg-cream/80 px-2 py-1 rounded">
+                {state.chartSeries.map((s) => `${s.label.split(' — ')[1] || s.metricKey}: ${s.dataPoints.length} pts`).join(' | ')}
+              </div>
             </div>
           )}
         </div>
 
         {/* Event list panel */}
         {state.eventSeries.length > 0 && (
-          <div className="card flex-shrink-0 max-h-48 overflow-y-auto">
+          <div className="card shrink-0 max-h-48 overflow-y-auto">
             <p className="field-label mb-2">Event Data</p>
             <div className="grid grid-cols-2 gap-4">
               {/* Sleep column */}

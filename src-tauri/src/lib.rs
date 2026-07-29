@@ -30,12 +30,18 @@ fn load_url(store: &AppStore) -> String {
 struct Settings {
     url: String,
     has_key: bool,
+    debug_output_dir: Option<String>,
 }
 
 #[tauri::command]
-async fn save_settings(app: AppHandle, url: String, key: String) -> Result<(), String> {
+async fn save_settings(app: AppHandle, url: String, key: String, debug_output_dir: Option<String>) -> Result<(), String> {
     let store = get_store(&app)?;
     store.set("apiUrl", url);
+    if let Some(dir) = debug_output_dir {
+        store.set("debugOutputDir", dir);
+    } else {
+        store.delete("debugOutputDir");
+    }
     store.save().map_err(|e| e.to_string())?;
 
     let entry = get_key_entry()?;
@@ -52,9 +58,14 @@ async fn load_settings(app: AppHandle) -> Result<Settings, String> {
     let entry = get_key_entry()?;
     let has_key = entry.get_password().is_ok();
 
+    let debug_output_dir = store
+        .get("debugOutputDir")
+        .and_then(|v| v.as_str().map(|s| s.to_string()));
+
     Ok(Settings {
         url: load_url(&store),
         has_key,
+        debug_output_dir,
     })
 }
 
@@ -62,6 +73,7 @@ async fn load_settings(app: AppHandle) -> Result<Settings, String> {
 async fn reset_settings(app: AppHandle) -> Result<(), String> {
     let store = get_store(&app)?;
     store.set("apiUrl", DEFAULT_API_URL);
+    store.delete("debugOutputDir");
     store.save().map_err(|e| e.to_string())?;
 
     let entry = get_key_entry()?;

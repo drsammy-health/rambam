@@ -33,9 +33,9 @@ export async function fetchSeriesForUser(
     dateFrom,
     dateTo,
     resolution,
-    20,
+    undefined,
     (current, total, message) => {
-      onProgress(current, total, `${metric.label} — ${userName} — ${message}`)
+      onProgress(current, total, `${metric.label} — ${message}`)
     },
   )
 
@@ -77,9 +77,9 @@ export async function fetchEventsForUser(
     eventType.key as 'workouts' | 'sleep',
     dateFrom,
     dateTo,
-    20,
+    undefined,
     (current, total, message) => {
-      onProgress(current, total, `${eventType.label} — ${userName} — ${message}`)
+      onProgress(current, total, `${eventType.label} — ${message}`)
     },
   )
 
@@ -139,7 +139,7 @@ export async function fetchSummariesForUser(
     userId,
     dateFrom,
     dateTo,
-    20,
+    undefined,
     (current, total, message) => {
       onProgress(current, total, `Activity summaries — ${message}`)
     },
@@ -155,7 +155,7 @@ export async function fetchSummariesForUser(
     userId,
     dateFrom,
     dateTo,
-    20,
+    undefined,
     (current, total, message) => {
       onProgress(current, total, `Sleep summaries — ${message}`)
     },

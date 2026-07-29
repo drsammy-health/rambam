@@ -44,7 +44,7 @@ export default function Settings() {
     }
 
     try {
-      await saveSettings(trimmedUrl, trimmedKey)
+      await saveSettings(trimmedUrl, trimmedKey, state.debugOutputDir)
       setPartial({ apiUrl: trimmedUrl, view: 'dashboard', hasApiKey: true })
       showStatus('Settings saved. Switching to Dashboard...', 'success')
     } catch (err) {
@@ -67,7 +67,7 @@ export default function Settings() {
     showStatus('Testing with current inputs...', 'neutral')
 
     try {
-      await saveSettings(trimmedUrl, trimmedKey)
+      await saveSettings(trimmedUrl, trimmedKey, state.debugOutputDir)
       setPartial({ apiUrl: trimmedUrl, hasApiKey: true })
 
       const result = await fetchUsers()
@@ -90,7 +90,7 @@ export default function Settings() {
   const handleReset = async () => {
     try {
       await resetSettings()
-      setPartial({ apiUrl: DEFAULT_API_URL, hasApiKey: false })
+      setPartial({ apiUrl: DEFAULT_API_URL, hasApiKey: false, debugOutputDir: null })
       setUrl(DEFAULT_API_URL)
       setKey('')
       showStatus('Reset to defaults. URL and key restored.', 'success')
@@ -102,6 +102,14 @@ export default function Settings() {
     }
   }
 
+  const persistDebugDir = async (dir: string | null) => {
+    try {
+      await saveSettings(state.apiUrl, '', dir)
+    } catch {
+      // Silently ignore — the dir is still in React state
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSave()
   }
@@ -110,6 +118,7 @@ export default function Settings() {
     const selected = await pickFolder()
     if (selected) {
       setPartial({ debugOutputDir: selected })
+      await persistDebugDir(selected)
     }
   }
 
@@ -199,11 +208,11 @@ export default function Settings() {
               type="text"
               className="text-sm flex-1"
               value={state.debugOutputDir || ''}
-              onChange={(e) =>
-                setPartial({
-                  debugOutputDir: e.target.value.trim() || null,
-                })
-              }
+              onChange={(e) => {
+                const dir = e.target.value.trim() || null
+                setPartial({ debugOutputDir: dir })
+                persistDebugDir(dir)
+              }}
               placeholder="Leave blank for default"
             />
             <button

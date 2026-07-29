@@ -11,7 +11,11 @@ export function useInitApp(): boolean {
     async function init() {
       try {
         const settings = await loadSettings()
-        setPartial({ apiUrl: settings.url, hasApiKey: settings.has_key })
+        setPartial({
+          apiUrl: settings.url,
+          hasApiKey: settings.has_key,
+          debugOutputDir: settings.debug_output_dir,
+        })
 
         if (!settings.has_key) {
           setPartial({ view: 'settings' })

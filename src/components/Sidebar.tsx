@@ -10,7 +10,12 @@ import type { ChartSeries, EventSeries } from '../types'
 function getDefaultDateRange(): { from: string; to: string } {
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const format = (d: Date) => d.toISOString().split('T')[0]
+  const format = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
   return { from: format(sevenDaysAgo), to: format(now) }
 }
 

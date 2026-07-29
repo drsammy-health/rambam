@@ -67,9 +67,105 @@ function formatLabel(ts: string): string {
   })
 }
 
+/** Bucket a timestamp to a resolution interval using Unix time. */
+function bucketTimestamp(ts: string, resolution: string): string {
+  const ms = new Date(ts).getTime()
+  switch (resolution) {
+    case '1hour': return new Date(Math.floor(ms / 3_600_000) * 3_600_000).toISOString()
+    case '15min': return new Date(Math.floor(ms / 900_000) * 900_000).toISOString()
+    case '5min':  return new Date(Math.floor(ms / 300_000) * 300_000).toISOString()
+    case '1min':  return new Date(Math.floor(ms / 60_000) * 60_000).toISOString()
+    default:      return ts
+  }
+}
+
+/** Provider priority for blood glucose: lower number = higher priority. */
+const GLUCOSE_PROVIDER_PRIORITY: Record<string, number> = {
+  stelo: 1,
+  dexcom: 2,
+}
+
+function getProviderPriority(provider: string | undefined): number {
+  if (!provider) return 999
+  return GLUCOSE_PROVIDER_PRIORITY[provider.toLowerCase()] ?? 999
+}
+
+/** Bucket data points so timestamps align across series. */
+function bucketSeriesData(
+  series: ChartSeries,
+  resolution: string,
+): ChartSeries {
+  const isGlucose = series.metricKey === 'blood_glucose'
+
+  // For glucose, we need to track per-provider values within each bucket
+  type BucketData = {
+    providers: Map<string, { sum: number; count: number }>
+  }
+  const buckets = new Map<string, BucketData>()
+
+  for (const dp of series.dataPoints) {
+    const bucketTs = bucketTimestamp(dp.timestamp, resolution)
+    const existing = buckets.get(bucketTs)
+    const provider = dp.source?.provider ?? 'unknown'
+    if (existing) {
+      const prov = existing.providers.get(provider)
+      if (prov) {
+        prov.sum += dp.value
+        prov.count += 1
+      } else {
+        existing.providers.set(provider, { sum: dp.value, count: 1 })
+      }
+    } else {
+      buckets.set(bucketTs, {
+        providers: new Map([[provider, { sum: dp.value, count: 1 }]]),
+      })
+    }
+  }
+
+  const bucketedPoints = Array.from(buckets.entries())
+    .map(([timestamp, { providers }]) => {
+      let chosenProvider: string | undefined
+      let chosenSum: number
+      let chosenCount: number
+
+      if (isGlucose) {
+        // Pick the provider with the highest priority (lowest number)
+        let bestPriority = Infinity
+        for (const [provider, { sum, count }] of providers) {
+          const priority = getProviderPriority(provider)
+          if (priority < bestPriority) {
+            bestPriority = priority
+            chosenProvider = provider
+            chosenSum = sum
+            chosenCount = count
+          }
+        }
+      } else {
+        // Fallback: use the first provider we see (existing behavior)
+        const first = Array.from(providers.entries())[0]
+        chosenProvider = first[0]
+        chosenSum = first[1].sum
+        chosenCount = first[1].count
+      }
+
+      return {
+        timestamp,
+        value: Math.round((chosenSum! / chosenCount!) * 10) / 10,
+        source:
+          chosenProvider && chosenProvider !== 'unknown'
+            ? { provider: chosenProvider, device: null }
+            : undefined,
+      }
+    })
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+
+  return { ...series, dataPoints: bucketedPoints }
+}
+
 export function renderChart(
   canvas: HTMLCanvasElement,
   seriesList: ChartSeries[],
+  resolution: 'raw' | '1min' | '5min' | '15min' | '1hour' = '1hour',
 ): void {
   if (chartInstance) {
     chartInstance.destroy()
@@ -83,15 +179,18 @@ export function renderChart(
     return
   }
 
-  // Build sorted union of all timestamps
+  // Bucket each series so timestamps align to the resolution grid
+  const bucketedSeries = seriesList.map((s) => bucketSeriesData(s, resolution))
+
+  // Build sorted union of all bucketed timestamps
   const allTimestamps = Array.from(
-    new Set(seriesList.flatMap((s) => s.dataPoints.map((d) => d.timestamp))),
+    new Set(bucketedSeries.flatMap((s) => s.dataPoints.map((d) => d.timestamp))),
   ).sort()
 
   const labels = allTimestamps.map(formatLabel)
 
   // Build datasets mapped to the unified label array
-  const datasets = seriesList.map((series) => {
+  const datasets = bucketedSeries.map((series) => {
     const pointMap = new Map(
       series.dataPoints.map((d) => [d.timestamp, d.value]),
     )

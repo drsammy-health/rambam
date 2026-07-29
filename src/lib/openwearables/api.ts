@@ -32,19 +32,26 @@ export function setCustomOutputDir(dir: string | null): void {
   customOutputDir = dir
 }
 
-export const PAGE_LIMIT = 100
-export const MAX_PAGES = 20
+export const API_PAGE_SIZE = 100
+export const MAX_PAGE_REQUESTS = 1000
 export const DEFAULT_DAYS = 7
 
 export async function saveDebugJson(data: unknown, filename: string): Promise<string> {
   const json = JSON.stringify(data, null, 2)
   const fullPath = debugDir ? `${debugDir}/${filename}` : filename
-  const path: string = await invoke('save_debug_json', {
-    filename: fullPath,
-    data: json,
-    outputDir: customOutputDir,
-  })
-  return path
+  console.log('[rambam] Saving debug JSON:', fullPath)
+  try {
+    const path: string = await invoke('save_debug_json', {
+      filename: fullPath,
+      data: json,
+      output_dir: customOutputDir,
+    })
+    console.log('[rambam] Saved debug JSON to:', path)
+    return path
+  } catch (err) {
+    console.error('[rambam] Debug save failed:', err)
+    throw err
+  }
 }
 
 export async function getDefaultDebugDir(): Promise<string> {
@@ -91,13 +98,16 @@ export async function fetchUsers(): Promise<ApiResponse<ApiUser[]>> {
 }
 
 function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 /**
  * Fetch all pages of timeseries data, following next_cursor links.
  * Uses resolution=1hour by default to avoid excessive point counts for charting.
- * Safety cap: stops after MAX_PAGES to prevent runaway requests.
+ * Safety cap: stops after MAX_PAGE_REQUESTS to prevent runaway requests.
  */
 export async function fetchAllTimeseries(
   userId: string,
@@ -105,13 +115,13 @@ export async function fetchAllTimeseries(
   startDate?: string,
   endDate?: string,
   resolution: 'raw' | '1min' | '5min' | '15min' | '1hour' = '1hour',
-  maxPages = MAX_PAGES,
+  maxPages = MAX_PAGE_REQUESTS,
   onProgress?: ProgressCallback,
 ): Promise<ApiResponse<ApiDataPoint[]>> {
   const params = new URLSearchParams()
   params.set('types', metric)
   params.set('resolution', resolution)
-  params.set('limit', String(PAGE_LIMIT))
+  params.set('limit', String(API_PAGE_SIZE))
 
   const now = new Date()
   const defaultStart = new Date(
@@ -148,7 +158,7 @@ export async function fetchAllTimeseries(
 
     if (page === 0) {
       const totalEstimate = Math.ceil(
-        (result.data.pagination.total_count || 0) / PAGE_LIMIT,
+        (result.data.pagination.total_count || 0) / API_PAGE_SIZE,
       )
       totalPages = Math.min(totalEstimate, maxPages)
     }
@@ -177,6 +187,14 @@ export async function fetchAllTimeseries(
     cursor = result.data.pagination.next_cursor
   }
 
+  if (allData.length > 0) {
+    console.log(
+      `[rambam] fetchAllTimeseries: ${allData.length} points from ${allData[0].timestamp} to ${allData[allData.length - 1].timestamp}`,
+    )
+  } else {
+    console.log('[rambam] fetchAllTimeseries: 0 points')
+  }
+
   return { ok: true, data: allData }
 }
 
@@ -185,11 +203,11 @@ export async function fetchAllEvents(
   eventType: 'workouts' | 'sleep',
   startDate?: string,
   endDate?: string,
-  maxPages = MAX_PAGES,
+  maxPages = MAX_PAGE_REQUESTS,
   onProgress?: ProgressCallback,
 ): Promise<ApiResponse<(ApiWorkout | ApiSleep)[]>> {
   const params = new URLSearchParams()
-  params.set('limit', '50')
+  params.set('limit', String(API_PAGE_SIZE))
 
   const now = new Date()
   const defaultStart = new Date(
@@ -219,7 +237,7 @@ export async function fetchAllEvents(
 
     if (page === 0) {
       const totalEstimate = Math.ceil(
-        (result.data.pagination.total_count || 0) / 50,
+        (result.data.pagination.total_count || 0) / API_PAGE_SIZE,
       )
       totalPages = Math.min(totalEstimate, maxPages)
     }
@@ -249,11 +267,11 @@ export async function fetchActivitySummaries(
   userId: string,
   startDate?: string,
   endDate?: string,
-  maxPages = MAX_PAGES,
+  maxPages = MAX_PAGE_REQUESTS,
   onProgress?: ProgressCallback,
 ): Promise<ApiResponse<ActivitySummary[]>> {
   const params = new URLSearchParams()
-  params.set('limit', String(PAGE_LIMIT))
+  params.set('limit', String(API_PAGE_SIZE))
 
   const now = new Date()
   const defaultStart = new Date(
@@ -290,7 +308,7 @@ export async function fetchActivitySummaries(
 
     if (page === 0) {
       const totalEstimate = Math.ceil(
-        (result.data.pagination.total_count || 0) / PAGE_LIMIT,
+        (result.data.pagination.total_count || 0) / API_PAGE_SIZE,
       )
       totalPages = Math.min(totalEstimate, maxPages)
     }
@@ -318,11 +336,11 @@ export async function fetchSleepSummaries(
   userId: string,
   startDate?: string,
   endDate?: string,
-  maxPages = MAX_PAGES,
+  maxPages = MAX_PAGE_REQUESTS,
   onProgress?: ProgressCallback,
 ): Promise<ApiResponse<SleepSummary[]>> {
   const params = new URLSearchParams()
-  params.set('limit', String(PAGE_LIMIT))
+  params.set('limit', String(API_PAGE_SIZE))
 
   const now = new Date()
   const defaultStart = new Date(
@@ -359,7 +377,7 @@ export async function fetchSleepSummaries(
 
     if (page === 0) {
       const totalEstimate = Math.ceil(
-        (result.data.pagination.total_count || 0) / PAGE_LIMIT,
+        (result.data.pagination.total_count || 0) / API_PAGE_SIZE,
       )
       totalPages = Math.min(totalEstimate, maxPages)
     }
@@ -387,11 +405,11 @@ export async function fetchRecoverySummaries(
   userId: string,
   startDate?: string,
   endDate?: string,
-  maxPages = MAX_PAGES,
+  maxPages = MAX_PAGE_REQUESTS,
   onProgress?: ProgressCallback,
 ): Promise<ApiResponse<RecoverySummary[]>> {
   const params = new URLSearchParams()
-  params.set('limit', String(PAGE_LIMIT))
+  params.set('limit', String(API_PAGE_SIZE))
 
   const now = new Date()
   const defaultStart = new Date(
@@ -428,7 +446,7 @@ export async function fetchRecoverySummaries(
 
     if (page === 0) {
       const totalEstimate = Math.ceil(
-        (result.data.pagination.total_count || 0) / PAGE_LIMIT,
+        (result.data.pagination.total_count || 0) / API_PAGE_SIZE,
       )
       totalPages = Math.min(totalEstimate, maxPages)
     }
