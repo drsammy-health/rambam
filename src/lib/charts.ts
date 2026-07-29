@@ -4,38 +4,6 @@ import type { ChartSeries } from '../types'
 
 Chart.register(zoomPlugin)
 
-const crosshairPlugin = {
-  id: 'crosshair',
-  afterEvent(chart: Chart, args: { event: { type: string; x: number; y: number } }) {
-    const { event } = args
-    if (event.type === 'mousemove') {
-      ;(chart as unknown as Record<string, number | undefined>).__crosshairX = event.x
-    }
-    if (event.type === 'mouseout') {
-      ;(chart as unknown as Record<string, number | undefined>).__crosshairX = undefined
-    }
-  },
-  afterDraw(chart: Chart) {
-    const x = (chart as unknown as Record<string, number | undefined>).__crosshairX
-    if (x == null) return
-
-    const { ctx, chartArea } = chart
-    if (!chartArea) return
-
-    ctx.save()
-    ctx.beginPath()
-    ctx.moveTo(x, chartArea.top)
-    ctx.lineTo(x, chartArea.bottom)
-    ctx.lineWidth = 1
-    ctx.strokeStyle = 'rgba(120, 113, 108, 0.4)'
-    ctx.setLineDash([4, 4])
-    ctx.stroke()
-    ctx.restore()
-  },
-}
-
-Chart.register(crosshairPlugin)
-
 let chartInstance: Chart | null = null
 
 const PALETTE = [
@@ -79,15 +47,11 @@ function bucketTimestamp(ts: string, resolution: string): string {
   }
 }
 
-/** Provider priority for blood glucose: lower number = higher priority. */
-const GLUCOSE_PROVIDER_PRIORITY: Record<string, number> = {
-  stelo: 1,
-  dexcom: 2,
-}
-
-function getProviderPriority(provider: string | undefined): number {
-  if (!provider) return 999
-  return GLUCOSE_PROVIDER_PRIORITY[provider.toLowerCase()] ?? 999
+/** Check whether a provider is an allowed glucose source. */
+function isAllowedGlucoseProvider(provider: string | undefined): boolean {
+  if (!provider) return false
+  const p = provider.toLowerCase()
+  return p.includes('stelo') || p.includes('dexcom')
 }
 
 /** Bucket data points so timestamps align across series. */
@@ -95,71 +59,44 @@ function bucketSeriesData(
   series: ChartSeries,
   resolution: string,
 ): ChartSeries {
+  // For blood glucose, drop anything that isn't Stelo or Dexcom.
   const isGlucose = series.metricKey === 'blood_glucose'
+  const points = isGlucose
+    ? series.dataPoints.filter((dp) => isAllowedGlucoseProvider(dp.source?.provider))
+    : series.dataPoints
 
-  // For glucose, we need to track per-provider values within each bucket
-  type BucketData = {
-    providers: Map<string, { sum: number; count: number }>
-  }
-  const buckets = new Map<string, BucketData>()
-
-  for (const dp of series.dataPoints) {
-    const bucketTs = bucketTimestamp(dp.timestamp, resolution)
-    const existing = buckets.get(bucketTs)
-    const provider = dp.source?.provider ?? 'unknown'
-    if (existing) {
-      const prov = existing.providers.get(provider)
-      if (prov) {
-        prov.sum += dp.value
-        prov.count += 1
-      } else {
-        existing.providers.set(provider, { sum: dp.value, count: 1 })
+  const buckets = new Map<string, { sum: number; count: number; provider?: string }>()
+  for (const dp of points) {
+    const ts = bucketTimestamp(dp.timestamp, resolution)
+    const b = buckets.get(ts)
+    if (b) {
+      b.sum += dp.value
+      b.count += 1
+      // If we ever mix providers in one bucket, just mark it mixed
+      if (b.provider && b.provider !== (dp.source?.provider ?? '')) {
+        b.provider = 'mixed'
       }
     } else {
-      buckets.set(bucketTs, {
-        providers: new Map([[provider, { sum: dp.value, count: 1 }]]),
+      buckets.set(ts, {
+        sum: dp.value,
+        count: 1,
+        provider: dp.source?.provider,
       })
     }
   }
 
-  const bucketedPoints = Array.from(buckets.entries())
-    .map(([timestamp, { providers }]) => {
-      let chosenProvider: string | undefined
-      let chosenSum: number
-      let chosenCount: number
-
-      if (isGlucose) {
-        // Pick the provider with the highest priority (lowest number)
-        let bestPriority = Infinity
-        for (const [provider, { sum, count }] of providers) {
-          const priority = getProviderPriority(provider)
-          if (priority < bestPriority) {
-            bestPriority = priority
-            chosenProvider = provider
-            chosenSum = sum
-            chosenCount = count
-          }
-        }
-      } else {
-        // Fallback: use the first provider we see (existing behavior)
-        const first = Array.from(providers.entries())[0]
-        chosenProvider = first[0]
-        chosenSum = first[1].sum
-        chosenCount = first[1].count
-      }
-
-      return {
-        timestamp,
-        value: Math.round((chosenSum! / chosenCount!) * 10) / 10,
-        source:
-          chosenProvider && chosenProvider !== 'unknown'
-            ? { provider: chosenProvider, device: null }
-            : undefined,
-      }
-    })
+  const dataPoints = Array.from(buckets.entries())
+    .map(([timestamp, { sum, count, provider }]) => ({
+      timestamp,
+      value: Math.round((sum / count) * 10) / 10,
+      source:
+        provider && provider !== 'mixed'
+          ? { provider, device: null }
+          : undefined,
+    }))
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
 
-  return { ...series, dataPoints: bucketedPoints }
+  return { ...series, dataPoints }
 }
 
 export function renderChart(
@@ -262,10 +199,11 @@ export function renderChart(
               const ts = allTimestamps[context.dataIndex]
               const dp = s.dataPoints.find((d) => d.timestamp === ts)
               const provider = dp?.source?.provider
-              if (val == null) return `${s.label}: —`
+              const metricName = s.label.split(' — ').pop() ?? s.label
+              if (val == null) return `${metricName}: —`
               return provider
-                ? `${s.label}: ${val} ${s.unit} (${provider})`
-                : `${s.label}: ${val} ${s.unit}`
+                ? [`${metricName}: ${val} ${s.unit}`, `  ${provider}`]
+                : `${metricName}: ${val} ${s.unit}`
             },
           },
         },

@@ -41,9 +41,22 @@ export default function Dashboard() {
             <div className="flex flex-col items-center justify-center gap-4 h-full">
               <Spinner />
               <div className="text-center">
-                <p className="font-medium text-charcoal">
-                  {state.loadingProgress?.message || 'Fetching data...'}
-                </p>
+                {(() => {
+                  const msg = state.loadingProgress?.message || 'Fetching data...'
+                  const parts = msg.split('\n')
+                  return (
+                    <>
+                      {parts.length > 1 && (
+                        <p className="font-medium text-charcoal">
+                          {parts[0]}
+                        </p>
+                      )}
+                      <p className="text-sm text-warm-gray">
+                        {parts[parts.length - 1]}
+                      </p>
+                    </>
+                  )
+                })()}
                 {state.loadingProgress && state.loadingProgress.total > 0 && (
                   <p className="text-sm text-warm-gray mt-1">
                     Page {state.loadingProgress.current} of{' '}
@@ -62,7 +75,10 @@ export default function Dashboard() {
             </div>
           ) : (
               <div className="chart-container">
-              <canvas ref={canvasRef} />
+              <canvas
+                ref={canvasRef}
+                key={state.chartSeries.map((s) => s.id).join(',')}
+              />
               {/* Data point count overlay */}
               <div className="absolute top-2 right-2 text-[10px] text-warm-gray-light bg-cream/80 px-2 py-1 rounded">
                 {state.chartSeries.map((s) => `${s.label.split(' — ')[1] || s.metricKey}: ${s.dataPoints.length} pts`).join(' | ')}

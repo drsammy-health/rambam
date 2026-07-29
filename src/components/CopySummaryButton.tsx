@@ -39,7 +39,7 @@ export default function CopySummaryButton() {
       disabled={!hasData}
       onClick={handleCopy}
     >
-      {copied ? 'Copied!' : 'Copy Summary'}
+      {copied ? 'Copied!' : 'Copy AI Summary'}
     </button>
   )
 }
