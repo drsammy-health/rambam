@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-VERSION=$1
+VERSION=${1:-}
 
 if [ -z "$VERSION" ]; then
   echo "Usage: ./release.sh <version>"
