@@ -257,9 +257,10 @@ export function renderChart(
           enabled: true,
           callbacks: {
             label: (context) => {
-              const s = seriesList[context.datasetIndex]
+              const s = bucketedSeries[context.datasetIndex]
               const val = context.parsed.y
-              const dp = s.dataPoints[context.dataIndex]
+              const ts = allTimestamps[context.dataIndex]
+              const dp = s.dataPoints.find((d) => d.timestamp === ts)
               const provider = dp?.source?.provider
               if (val == null) return `${s.label}: —`
               return provider
