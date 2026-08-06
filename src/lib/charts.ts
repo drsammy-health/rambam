@@ -57,12 +57,13 @@ export function renderChart(
   ).sort()
 
   const labels = allTimestamps.map(formatLabel)
+  const pointMaps = seriesList.map(
+    (series) => new Map(series.dataPoints.map((point) => [point.timestamp, point])),
+  )
 
   // Build datasets mapped to the unified label array
-  const datasets = seriesList.map((series) => {
-    const pointMap = new Map(
-      series.dataPoints.map((d) => [d.timestamp, d]),
-    )
+  const datasets = seriesList.map((series, index) => {
+    const pointMap = pointMaps[index]
     const data = allTimestamps.map((ts) => pointMap.get(ts)?.value ?? null)
 
     return {
@@ -129,7 +130,7 @@ export function renderChart(
               const series = seriesList[context.datasetIndex]
               const val = context.parsed.y
               const ts = allTimestamps[context.dataIndex]
-              const dp = series.dataPoints.find((d) => d.timestamp === ts)
+              const dp = pointMaps[context.datasetIndex].get(ts)
               const provider = dp?.source?.provider
               const metricName = series.label.split(' — ').pop() ?? series.label
               if (val == null) return `${metricName}: —`

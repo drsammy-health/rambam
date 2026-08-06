@@ -9,9 +9,15 @@ type AISummaryModalProps = {
   onClose: () => void
 }
 
+type ModalStatus = {
+  type: 'success' | 'error'
+  message: string
+}
+
 export default function AISummaryModal({ onClose }: AISummaryModalProps) {
-  const { state, setPartial } = useAppState()
+  const { state } = useAppState()
   const [exporting, setExporting] = useState(false)
+  const [status, setStatus] = useState<ModalStatus | null>(null)
 
   const summary = generateAISummary(
     state.chartSeries,
@@ -24,9 +30,12 @@ export default function AISummaryModal({ onClose }: AISummaryModalProps) {
 
   const handleCopy = async () => {
     const copied = await copyToClipboard(summary)
-    if (!copied) {
-      setPartial({ error: 'Clipboard access denied. Unable to copy summary.' })
-    }
+    setStatus({
+      type: copied ? 'success' : 'error',
+      message: copied
+        ? 'Copied to clipboard.'
+        : 'Clipboard access denied. Unable to copy summary.',
+    })
   }
 
   const handleExport = async () => {
@@ -42,11 +51,15 @@ export default function AISummaryModal({ onClose }: AISummaryModalProps) {
       .join('_') + '.csv'
 
     setExporting(true)
+    setStatus(null)
     try {
-      await saveCsvFile(filename, chartSeriesToCsv(state.chartSeries))
+      const path = await saveCsvFile(filename, chartSeriesToCsv(state.chartSeries))
+      if (path) {
+        setStatus({ type: 'success', message: 'Raw CSV exported.' })
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      setPartial({ error: `Unable to export CSV: ${message}` })
+      setStatus({ type: 'error', message: `Unable to export CSV: ${message}` })
     } finally {
       setExporting(false)
     }
@@ -91,6 +104,14 @@ export default function AISummaryModal({ onClose }: AISummaryModalProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
+          {status && (
+            <p
+              className={`mr-auto text-xs ${status.type === 'error' ? 'text-error-text' : 'text-success-text'}`}
+              aria-live="polite"
+            >
+              {status.message}
+            </p>
+          )}
           <button
             type="button"
             className="btn-secondary text-xs py-1.5 px-3"

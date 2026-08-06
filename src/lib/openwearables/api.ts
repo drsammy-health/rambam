@@ -133,6 +133,7 @@ export async function fetchAllTimeseries(
 
   let cursor: string | null = null
   let totalPages = maxPages
+  let hasMore = true
   const allData: ApiDataPoint[] = []
 
   for (let page = 0; page < maxPages; page++) {
@@ -150,9 +151,6 @@ export async function fetchAllTimeseries(
     }
 
     if (!result.ok) {
-      if (allData.length > 0) {
-        return { ok: true, data: allData }
-      }
       return result
     }
 
@@ -177,14 +175,26 @@ export async function fetchAllTimeseries(
     allData.push(...pageData)
     onProgress?.(page + 1, totalPages, `Fetched ${allData.length} points...`)
 
-    if (
-      !result.data.pagination.has_more ||
-      !result.data.pagination.next_cursor
-    ) {
+    if (!result.data.pagination.has_more) {
+      hasMore = false
       break
     }
 
+    if (!result.data.pagination.next_cursor) {
+      return {
+        ok: false,
+        error: 'Timeseries response indicated more data but did not provide a cursor.',
+      }
+    }
+
     cursor = result.data.pagination.next_cursor
+  }
+
+  if (hasMore) {
+    return {
+      ok: false,
+      error: `Timeseries data exceeded the ${maxPages * API_PAGE_SIZE}-point fetch limit. Select a shorter date range.`,
+    }
   }
 
   if (allData.length > 0) {

@@ -67,23 +67,24 @@ export function generateAISummary(
       const user = users.find((u) => u.id === series.userId)
       const userName = user ? getUserDisplayName(user) : series.userId
 
-      const values = series.dataPoints.map((d) => d.value)
-      const count = values.length
+      const count = series.dataPoints.length
       if (count === 0) {
         lines.push(`- ${userName}: No data`)
         continue
       }
 
-      const avg = values.reduce((a, b) => a + b, 0) / count
-      const min = Math.min(...values)
-      const max = Math.max(...values)
-
-      // Count points by source provider
+      let sum = 0
+      let min = Infinity
+      let max = -Infinity
       const byProvider: Record<string, number> = {}
       for (const dp of series.dataPoints) {
+        sum += dp.value
+        min = Math.min(min, dp.value)
+        max = Math.max(max, dp.value)
         const p = dp.source?.provider || 'Unknown'
         byProvider[p] = (byProvider[p] || 0) + 1
       }
+      const avg = sum / count
       const providerSummary = Object.entries(byProvider)
         .map(([p, c]) => `${p}: ${c}`)
         .join(', ')
