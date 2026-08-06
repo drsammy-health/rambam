@@ -1,4 +1,5 @@
 import { getSeriesColor } from './charts'
+import { filterGlucoseProviders } from './data-transform'
 import {
   fetchAllEvents,
   fetchAllTimeseries,
@@ -17,8 +18,6 @@ export async function fetchSeriesForUser(
   users: ApiUser[],
   dateFrom: string,
   dateTo: string,
-  colorOffset: number,
-  resolution: 'raw' | '1min' | '5min' | '15min' | '1hour',
   onProgress: (current: number, total: number, message: string) => void,
 ): Promise<{ series: ChartSeries[]; errors: string[] }> {
   const series: ChartSeries[] = []
@@ -32,7 +31,7 @@ export async function fetchSeriesForUser(
     metric.key,
     dateFrom,
     dateTo,
-    resolution,
+    'raw',
     undefined,
     (current, total, message) => {
       onProgress(current, total, `${metric.label}\n${message}`)
@@ -48,9 +47,12 @@ export async function fetchSeriesForUser(
       metricKey: metric.key,
       label: `${userName} — ${metric.label}`,
       unit: metric.unit,
-      color: getSeriesColor(colorOffset + series.length),
+      color: getSeriesColor(0),
       continuous: metric.continuous ?? false,
-      dataPoints: result.data,
+      dataPoints:
+        metric.key === 'blood_glucose'
+          ? filterGlucoseProviders(result.data)
+          : result.data,
     })
   }
 

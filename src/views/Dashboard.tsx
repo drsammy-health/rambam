@@ -13,11 +13,11 @@ export default function Dashboard() {
       destroyChart()
       return
     }
-    renderChart(canvasRef.current, state.chartSeries, state.resolution)
+    renderChart(canvasRef.current, state.chartSeries)
     return () => {
       destroyChart()
     }
-  }, [state.chartSeries, state.resolution])
+  }, [state.chartSeries])
 
   return (
     <div className="flex flex-col flex-1 min-w-0 h-full p-4 gap-4 overflow-hidden">
@@ -68,7 +68,7 @@ export default function Dashboard() {
           ) : state.chartSeries.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-center text-warm-gray-light">
-                {state.activeMetricKeys.length > 0 || state.activeEventKeys.length > 0
+                {state.activeMetricKey != null || state.activeEventKeys.length > 0
                   ? 'Click Fetch Data in the sidebar to update the chart.'
                   : 'Select a user from the sidebar, then choose metrics or events to display.'}
               </p>

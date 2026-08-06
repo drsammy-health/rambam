@@ -17,3 +17,7 @@ export async function saveSettings(url: string, key: string, debugOutputDir?: st
 export async function resetSettings(): Promise<void> {
   return invoke('reset_settings')
 }
+
+export async function saveCsvFile(filename: string, data: string): Promise<string | null> {
+  return invoke<string | null>('save_csv_file', { filename, data })
+}

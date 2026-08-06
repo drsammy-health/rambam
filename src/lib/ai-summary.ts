@@ -42,6 +42,9 @@ export function generateAISummary(
   // Header
   lines.push('Health Data Summary')
   lines.push(`Period: ${dateFrom} to ${dateTo}`)
+  if (chartSeries.length > 0) {
+    lines.push('Raw time-series data is available as a separate CSV export.')
+  }
   lines.push('')
 
   // Group series by metric

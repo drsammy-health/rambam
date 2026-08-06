@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import CopySummaryButton from './CopySummaryButton'
+import AISummaryModal from './AISummaryModal'
 import EventsPanel from './EventsPanel'
 import MetricsPanel from './MetricsPanel'
 import { fetchEventsForUser, fetchSeriesForUser, fetchSummariesForUser } from '../lib/fetch'
@@ -21,6 +21,8 @@ function getDefaultDateRange(): { from: string; to: string } {
 
 export default function Sidebar() {
   const { state, setPartial } = useAppState()
+  const [debug, setDebug] = useState(false)
+  const [showSummaryPreview, setShowSummaryPreview] = useState(false)
 
   // Initialize default dates on first mount if not set
   useEffect(() => {
@@ -39,22 +41,22 @@ export default function Sidebar() {
       activeUserId: userId,
       chartSeries: [],
       eventSeries: [],
-      activeMetricKeys: [],
+      activeMetricKey: null,
       activeEventKeys: [],
       summaries: { activity: [], sleep: [], body: null, data: null },
     })
   }
 
   const toggleMetric = (metricKey: string) => {
-    const isActive = state.activeMetricKeys.includes(metricKey)
+    const isActive = state.activeMetricKey === metricKey
     if (isActive) {
       setPartial({
-        activeMetricKeys: state.activeMetricKeys.filter((k) => k !== metricKey),
-        chartSeries: state.chartSeries.filter((s) => s.metricKey !== metricKey),
+        activeMetricKey: null,
+        chartSeries: [],
       })
     } else {
       setPartial({
-        activeMetricKeys: [...state.activeMetricKeys, metricKey],
+        activeMetricKey: metricKey,
         chartSeries: [],
         eventSeries: [],
       })
@@ -78,7 +80,7 @@ export default function Sidebar() {
   }
 
   const handleRefresh = async () => {
-    const hasMetrics = state.activeMetricKeys.length > 0
+    const hasMetrics = state.activeMetricKey != null
     const hasEvents = state.activeEventKeys.length > 0
     if (!hasMetrics && !hasEvents && !state.fetchSummaries) return
     if (state.dateFrom && state.dateTo && state.dateFrom > state.dateTo) {
@@ -108,27 +110,25 @@ export default function Sidebar() {
     const allEventSeries: EventSeries[] = []
     const errors: string[] = []
 
-    for (const metricKey of state.activeMetricKeys) {
-      const metric = state.metrics.find((m) => m.key === metricKey)
-      if (!metric || !state.activeUserId) continue
+    if (state.activeMetricKey) {
+      const metric = state.metrics.find((m) => m.key === state.activeMetricKey)
+      if (metric && state.activeUserId) {
+        const result = await fetchSeriesForUser(
+          metric,
+          state.activeUserId,
+          state.users,
+          state.dateFrom || '',
+          state.dateTo || '',
+          (current, total, message) => {
+            setPartial({
+              loadingProgress: { current, total, message },
+            })
+          },
+        )
 
-      const result = await fetchSeriesForUser(
-        metric,
-        state.activeUserId,
-        state.users,
-        state.dateFrom || '',
-        state.dateTo || '',
-        allSeries.length,
-        state.resolution,
-        (current, total, message) => {
-          setPartial({
-            loadingProgress: { current, total, message },
-          })
-        },
-      )
-
-      allSeries.push(...result.series)
-      errors.push(...result.errors)
+        allSeries.push(...result.series)
+        errors.push(...result.errors)
+      }
     }
 
     for (const eventKey of state.activeEventKeys) {
@@ -184,11 +184,9 @@ export default function Sidebar() {
 
   const canRefresh =
     state.activeUserId &&
-    (state.activeMetricKeys.length > 0 ||
+    (state.activeMetricKey != null ||
       state.activeEventKeys.length > 0 ||
       state.fetchSummaries)
-  const [debug, setDebug] = useState(false)
-
   return (
     <aside className="sidebar flex flex-col h-full">
       {/* Users section */}
@@ -275,7 +273,7 @@ export default function Sidebar() {
         <p className="field-label mb-2">Metrics</p>
         <MetricsPanel
           metrics={state.metrics}
-          activeMetricKeys={state.activeMetricKeys}
+          activeMetricKey={state.activeMetricKey}
           onToggle={toggleMetric}
         />
       </div>
@@ -290,27 +288,9 @@ export default function Sidebar() {
         />
       </div>
 
-      {/* Resolution + toggles row */}
+      {/* Toggles row */}
       <div className="px-4 pt-3 pb-1">
-        <label className="field-label mb-1">Resolution</label>
-        <select
-          className="w-full text-xs"
-          value={state.resolution}
-          onChange={(e) =>
-            setPartial({
-              resolution: e.target.value as 'raw' | '1min' | '5min' | '15min' | '1hour',
-              chartSeries: [],
-              eventSeries: [],
-            })
-          }
-        >
-          <option value="raw">Raw</option>
-          <option value="1min">1 minute</option>
-          <option value="5min">5 minutes</option>
-          <option value="15min">15 minutes</option>
-          <option value="1hour">1 hour</option>
-        </select>
-        <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-3">
           <label className="flex items-center gap-1 cursor-pointer">
             <input
               type="checkbox"
@@ -338,16 +318,22 @@ export default function Sidebar() {
       </div>
 
       {/* Action buttons */}
-      <div className="px-4 py-3 flex gap-2">
+      <div className="px-4 py-3 grid grid-cols-2 gap-2">
         <button
           type="button"
-          className="btn-primary flex-1 text-[10px] whitespace-nowrap py-1.5 px-2"
+          className="btn-primary text-[10px] whitespace-nowrap py-1.5 px-2"
           disabled={!canRefresh || state.loading}
           onClick={handleRefresh}
         >
           {state.loading ? 'Loading...' : 'Fetch Data'}
         </button>
-        <CopySummaryButton />
+        <button
+          type="button"
+          className="btn-secondary text-[10px] whitespace-nowrap py-1.5 px-2"
+          onClick={() => setShowSummaryPreview(true)}
+        >
+          AI Summary
+        </button>
       </div>
 
       {/* Settings button */}
@@ -364,6 +350,10 @@ export default function Sidebar() {
           {state.view === 'settings' ? 'Back to Dashboard' : 'Settings'}
         </button>
       </div>
+
+      {showSummaryPreview && (
+        <AISummaryModal onClose={() => setShowSummaryPreview(false)} />
+      )}
     </aside>
   )
 }

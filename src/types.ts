@@ -65,7 +65,7 @@ export type AppState = {
   users: ApiUser[]
   activeUserId: string | null
   metrics: Metric[]
-  activeMetricKeys: string[]
+  activeMetricKey: string | null
   chartSeries: ChartSeries[]
   events: EventType[]
   activeEventKeys: string[]
@@ -74,7 +74,6 @@ export type AppState = {
   fetchSummaries: boolean
   dateFrom: string | null
   dateTo: string | null
-  resolution: 'raw' | '1min' | '5min' | '15min' | '1hour'
   loading: boolean
   loadingProgress: LoadingProgress | null
   error: string | null

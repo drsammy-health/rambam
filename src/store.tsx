@@ -20,7 +20,7 @@ export function createState(): AppState {
       { key: 'respiratory_rate', label: 'Respiratory Rate', unit: 'rpm' },
       { key: 'heart_rate_variability_sdnn', label: 'HRV (SDNN)', unit: 'ms' },
     ],
-    activeMetricKeys: [],
+    activeMetricKey: null,
     chartSeries: [],
     events: [
       { key: 'workouts', label: 'Workouts' },
@@ -37,7 +37,6 @@ export function createState(): AppState {
     fetchSummaries: true,
     dateFrom: null,
     dateTo: null,
-    resolution: '1hour',
     loading: false,
     loadingProgress: null,
     error: null,

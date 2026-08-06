@@ -122,6 +122,30 @@ async fn pick_folder(app: AppHandle) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
+async fn save_csv_file(
+    app: AppHandle,
+    filename: String,
+    data: String,
+) -> Result<Option<String>, String> {
+    let Some(file_path) = app
+        .dialog()
+        .file()
+        .add_filter("CSV", &["csv"])
+        .set_file_name(filename)
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+
+    let mut path = std::path::PathBuf::from(file_path.to_string());
+    if path.extension().is_none() {
+        path.set_extension("csv");
+    }
+    std::fs::write(&path, data).map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 fn get_default_debug_dir(app: AppHandle) -> Result<String, String> {
     let base = app.path().document_dir()
         .or_else(|_| app.path().app_data_dir())
@@ -170,7 +194,16 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![fetch_url, save_settings, load_settings, reset_settings, save_debug_json, get_default_debug_dir, pick_folder])
+        .invoke_handler(tauri::generate_handler![
+            fetch_url,
+            save_settings,
+            load_settings,
+            reset_settings,
+            save_debug_json,
+            get_default_debug_dir,
+            pick_folder,
+            save_csv_file
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
