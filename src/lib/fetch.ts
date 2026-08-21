@@ -41,18 +41,39 @@ export async function fetchSeriesForUser(
   if (!result.ok) {
     errors.push(`${userName}: ${result.error}`)
   } else {
-    series.push({
-      id: `${userId}:${metric.key}`,
-      userId,
-      metricKey: metric.key,
-      label: `${userName} — ${metric.label}`,
-      unit: metric.unit,
-      color: getSeriesColor(0),
-      continuous: metric.continuous ?? false,
-      dataPoints:
-        metric.key === 'blood_glucose'
-          ? filterGlucoseProviders(result.data)
-          : result.data,
+    const dataPoints =
+      metric.key === 'blood_glucose'
+        ? filterGlucoseProviders(result.data)
+        : result.data
+    const pointsByProvider = new Map<string, typeof dataPoints>()
+    for (const point of dataPoints) {
+      const provider = point.source?.provider ?? 'unknown'
+      const providerPoints = pointsByProvider.get(provider)
+      if (providerPoints) {
+        providerPoints.push(point)
+      } else {
+        pointsByProvider.set(provider, [point])
+      }
+    }
+    const providerGroups: Array<[string | undefined, typeof dataPoints]> =
+      pointsByProvider.size === 0
+        ? [[undefined, dataPoints]]
+        : Array.from(pointsByProvider.entries())
+    const hasMultipleProviders = providerGroups.length > 1
+
+    providerGroups.forEach(([provider, points], index) => {
+      series.push({
+        id: `${userId}:${metric.key}:${provider ?? 'none'}`,
+        userId,
+        metricKey: metric.key,
+        metricLabel: metric.label,
+        provider,
+        label: `${userName} — ${metric.label}${hasMultipleProviders && provider ? ` (${provider})` : ''}`,
+        unit: metric.unit,
+        color: getSeriesColor(index),
+        continuous: metric.continuous ?? false,
+        dataPoints: points,
+      })
     })
   }
 

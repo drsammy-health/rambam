@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Spinner from '../components/Spinner'
 import { destroyChart, renderChart } from '../lib/charts'
 import { useAppState } from '../store'
@@ -6,18 +6,49 @@ import { useAppState } from '../store'
 export default function Dashboard() {
   const { state, setPartial } = useAppState()
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [hiddenSeriesIds, setHiddenSeriesIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+
+  const visibleChartSeries = state.chartSeries.filter(
+    (series) => !hiddenSeriesIds.has(series.id),
+  )
+
+  useEffect(() => {
+    setHiddenSeriesIds(new Set())
+  }, [state.chartSeries])
 
   useEffect(() => {
     if (!canvasRef.current) return
-    if (state.chartSeries.length === 0) {
+    if (visibleChartSeries.length === 0) {
       destroyChart()
       return
     }
-    renderChart(canvasRef.current, state.chartSeries)
+    renderChart(canvasRef.current, visibleChartSeries)
     return () => {
       destroyChart()
     }
-  }, [state.chartSeries])
+  }, [state.chartSeries, hiddenSeriesIds])
+
+  const toggleSeries = (seriesId: string) => {
+    setHiddenSeriesIds((current) => {
+      const next = new Set(current)
+      if (next.has(seriesId)) {
+        next.delete(seriesId)
+      } else {
+        next.add(seriesId)
+      }
+      return next
+    })
+  }
+
+  const visiblePointCount = visibleChartSeries.reduce(
+    (total, series) => total + series.dataPoints.length,
+    0,
+  )
+  const hasMultipleProviders = state.chartSeries.length > 1
+  const singleSeries =
+    state.chartSeries.length === 1 ? state.chartSeries[0] : null
 
   return (
     <div className="flex flex-col flex-1 min-w-0 h-full p-4 gap-4 overflow-hidden">
@@ -74,14 +105,43 @@ export default function Dashboard() {
               </p>
             </div>
           ) : (
-              <div className="chart-container">
+            <div className="chart-container">
               <canvas
                 ref={canvasRef}
                 key={state.chartSeries.map((s) => s.id).join(',')}
               />
-              {/* Data point count overlay */}
-              <div className="absolute top-2 right-2 text-[10px] text-warm-gray-light bg-cream/80 px-2 py-1 rounded">
-                {state.chartSeries.map((s) => `${s.label.split(' — ')[1] || s.metricKey}: ${s.dataPoints.length} pts`).join(' | ')}
+              {/* Provider visibility and data point count overlay */}
+              <div className="absolute top-2 right-2 flex items-center gap-3 text-[10px] text-warm-gray-light bg-cream/80 px-2 py-1 rounded">
+                <span>
+                  {singleSeries
+                    ? `${singleSeries.metricLabel}: ${visiblePointCount.toLocaleString()} pts`
+                    : `${visiblePointCount} pts`}
+                  {singleSeries?.provider && (
+                    <>
+                      {' | '}
+                      <span className="capitalize">
+                        {singleSeries.provider}
+                      </span>
+                    </>
+                  )}
+                </span>
+                {hasMultipleProviders &&
+                  state.chartSeries.map((series) => (
+                    <label
+                      key={series.id}
+                      className="flex items-center gap-1 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!hiddenSeriesIds.has(series.id)}
+                        onChange={() => toggleSeries(series.id)}
+                        style={{ accentColor: series.color }}
+                      />
+                      <span>
+                        {series.provider ?? series.metricLabel}
+                      </span>
+                    </label>
+                  ))}
               </div>
             </div>
           )}

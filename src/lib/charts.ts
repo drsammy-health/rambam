@@ -132,11 +132,10 @@ export function renderChart(
               const ts = allTimestamps[context.dataIndex]
               const dp = pointMaps[context.datasetIndex].get(ts)
               const provider = dp?.source?.provider
-              const metricName = series.label.split(' — ').pop() ?? series.label
-              if (val == null) return `${metricName}: —`
+              if (val == null) return `${series.metricLabel}: —`
               return provider
-                ? [`${metricName}: ${val} ${series.unit}`, `  ${provider}`]
-                : `${metricName}: ${val} ${series.unit}`
+                ? [`${series.metricLabel}: ${val} ${series.unit}`, `  ${provider}`]
+                : `${series.metricLabel}: ${val} ${series.unit}`
             },
           },
         },

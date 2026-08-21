@@ -58,8 +58,7 @@ export function generateAISummary(
 
   for (const [, seriesList] of Object.entries(byMetric)) {
     const first = seriesList[0]
-    const metricLabel = first.label.split(' — ')[1] || first.metricKey
-    lines.push(`## ${metricLabel}`)
+    lines.push(`## ${first.metricLabel}`)
     lines.push(`Unit: ${first.unit}`)
     lines.push('')
 

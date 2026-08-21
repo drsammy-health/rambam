@@ -19,6 +19,7 @@ export function createState(): AppState {
       { key: 'blood_glucose', label: 'Blood Glucose', unit: 'mg/dL', continuous: true },
       { key: 'respiratory_rate', label: 'Respiratory Rate', unit: 'rpm' },
       { key: 'heart_rate_variability_sdnn', label: 'HRV (SDNN)', unit: 'ms' },
+      { key: 'heart_rate_variability_rmssd', label: 'HRV (RMSSD)', unit: 'ms' },
     ],
     activeMetricKey: null,
     chartSeries: [],

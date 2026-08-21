@@ -31,6 +31,8 @@ export type ChartSeries = {
   id: string
   userId: string
   metricKey: string
+  metricLabel: string
+  provider?: string
   label: string
   unit: string
   color: string
