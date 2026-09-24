@@ -11,6 +11,7 @@ export type ApiDataPoint = {
   value: number
   source?: {
     provider: string
+    source?: string | null
     device: string | null
   }
 }

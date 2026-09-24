@@ -160,6 +160,14 @@ export function renderChart(
           display: true,
           ticks: {
             maxTicksLimit: 10,
+            maxRotation: 0,
+            callback: (value) => {
+              const date = new Date(allTimestamps[Number(value)])
+              return [
+                date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
+                date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
+              ]
+            },
           },
         },
         ...yScales,
